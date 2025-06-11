@@ -23,14 +23,14 @@ jobs:
 
       - name: 检查备份文件是否存在
         run: |
-          if [ ! -f _worker.js.backup.js ]; then
-            echo "备份文件 _worker.js.backup.js 不存在，正在创建..."
-            cp _worker.js _worker.js.backup.js
+          if [ ! -f _worker.js.backup ]; then
+            echo "备份文件 _worker.js.backup 不存在，正在创建..."
+            cp _worker.js _worker.js.backup
           fi
 
       - name: 混淆代码
         run: |
-          javascript-obfuscator _worker.js.backup.js --output _worker.js \
+          javascript-obfuscator _worker.js.backup --output _worker.js \
           --compact true \
           --control-flow-flattening true \
           --control-flow-flattening-threshold 1 \
@@ -49,8 +49,10 @@ jobs:
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add _worker.js
-          if [ -f _worker.js.backup.js ]; then
-            cp _worker.js.backup.js _worker.js.backup
+          if git diff --cached --quiet _worker.js.backup; then
+            echo "_worker.js.backup 文件没有更改，跳过提交"
+          else
+            echo "_worker.js.backup 文件有更改，添加到提交"
             git add _worker.js.backup
           fi
           git commit -m "混淆 _worker.js 文件并备份原文件" || echo "没有需要提交的更改"
