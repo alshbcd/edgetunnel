@@ -302,24 +302,6 @@ export default {
                 }
                 return new Response('无效的订阅TOKEN', { status: 403 });
             }
-
-            let 伪装页URL = env.URL || 'nginx';
-            if (伪装页URL && 伪装页URL !== 'nginx' && 伪装页URL !== '1101') {
-                伪装页URL = 伪装页URL.trim().replace(/\/$/, '');
-                if (!伪装页URL.match(/^https?:\/\//i)) 伪装页URL = 'https://' + 伪装页URL;
-                if (伪装页URL.toLowerCase().startsWith('http://')) 伪装页URL = 'https://' + 伪装页URL.substring(7);
-                try { const u = new URL(伪装页URL); 伪装页URL = u.protocol + '//' + u.host; } catch (e) { 伪装页URL = 'nginx'; }
-            }
-            if (伪装页URL === '1101') return new Response(await html1101(url.host, 访问IP), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
-            try {
-                const 反代URL = new URL(伪装页URL), 新请求头 = new Headers(request.headers);
-                新请求头.set('Host', 反代URL.host);
-                if (新请求头.has('Referer')) { const u = new URL(新请求头.get('Referer')); 新请求头.set('Referer', 反代URL.protocol + '//' + 反代URL.host + u.pathname + u.search); }
-                if (新请求头.has('Origin')) 新请求头.set('Origin', 反代URL.protocol + '//' + 反代URL.host);
-                if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
-                return fetch(new Request(反代URL.protocol + 反代URL.host + url.pathname + url.search, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf }));
-            } catch (error) { }
-            return new Response(await nginx(), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
         } else if (管理员密码) {// ws代理
             await 反代参数获取(request);
             const { 0: client, 1: server } = new WebSocketPair();
@@ -327,6 +309,24 @@ export default {
             handleConnection(server, request, userID);
             return new Response(null, { status: 101, webSocket: client });
         }
+        
+        let 伪装页URL = env.URL || 'nginx';
+        if (伪装页URL && 伪装页URL !== 'nginx' && 伪装页URL !== '1101') {
+            伪装页URL = 伪装页URL.trim().replace(/\/$/, '');
+            if (!伪装页URL.match(/^https?:\/\//i)) 伪装页URL = 'https://' + 伪装页URL;
+            if (伪装页URL.toLowerCase().startsWith('http://')) 伪装页URL = 'https://' + 伪装页URL.substring(7);
+            try { const u = new URL(伪装页URL); 伪装页URL = u.protocol + '//' + u.host; } catch (e) { 伪装页URL = 'nginx'; }
+        }
+        if (伪装页URL === '1101') return new Response(await html1101(url.host, 访问IP), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
+        try {
+            const 反代URL = new URL(伪装页URL), 新请求头 = new Headers(request.headers);
+            新请求头.set('Host', 反代URL.host);
+            if (新请求头.has('Referer')) { const u = new URL(新请求头.get('Referer')); 新请求头.set('Referer', 反代URL.protocol + '//' + 反代URL.host + u.pathname + u.search); }
+            if (新请求头.has('Origin')) 新请求头.set('Origin', 反代URL.protocol + '//' + 反代URL.host);
+            if (!新请求头.has('User-Agent') && UA && UA !== 'null') 新请求头.set('User-Agent', UA);
+            return fetch(new Request(反代URL.protocol + 反代URL.host + url.pathname + url.search, { method: request.method, headers: 新请求头, body: request.body, cf: request.cf }));
+        } catch (error) { }
+        return new Response(await nginx(), { status: 200, headers: { 'Content-Type': 'text/html; charset=UTF-8' } });
     }
 };
 ///////////////////////////////////////////////////////////////////////WS传输数据///////////////////////////////////////////////
@@ -375,7 +375,7 @@ function handleConnection(ws, request, FIXED_UUID) {
     let isConnecting = false, isReading = false;
     let score = 1.0, lastCheck = Date.now(), lastRxBytes = 0, successCount = 0, failCount = 0;
     let stats = { total: 0, count: 0, bigChunks: 0, window: 0, timestamp: Date.now() };
-    let mode = 'direct', avgSize = 0, throughputs = [];
+    let mode = 'adaptive', avgSize = 0, throughputs = [];
 
     // 动态调整传输模式
     const updateMode = size => {
